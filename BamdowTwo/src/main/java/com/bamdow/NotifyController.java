@@ -22,17 +22,29 @@ public class NotifyController {
 	private TokenService tokenService;
 	
 	@RequestMapping("/notify.do")
-	public void one(String token,String orign,HttpServletRequest req, HttpServletResponse resp){
-		String uid= UUID.randomUUID().toString();
-		Cookie cookie = new Cookie("token",uid);
-		cookie.setHttpOnly(true);
-		cookie.setMaxAge(10*60);
-		resp.addCookie(cookie);
-		tokenService.put(uid, token);
-		try {
-			resp.sendRedirect(orign);
-		} catch (IOException e) {
-			e.printStackTrace();
+	public ModelAndView one(String token,String logout,String orign,HttpServletRequest req, HttpServletResponse resp){
+		//退出登录
+		if( "-1".equals(logout) ){
+			String cookied = tokenService.get(token);
+			tokenService.remove(token);
+			tokenService.remove(cookied);
+			return null;
 		}
+		if( token!=null && !"".equals(token) ){
+			String cookieId= UUID.randomUUID().toString();
+			int maxage = 8*60;//8分钟小于passport10分钟
+			Cookie cookie = new Cookie("token",cookieId);
+			cookie.setHttpOnly(true);
+			cookie.setMaxAge( maxage );
+			resp.addCookie(cookie);
+			tokenService.put(cookieId, token,maxage);
+			tokenService.put(token, cookieId,maxage);
+			try {
+				resp.sendRedirect(orign);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		return null;
 	}
 }

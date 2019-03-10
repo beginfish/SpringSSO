@@ -1,7 +1,11 @@
 package com.bamdow;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.bamdow.service.TokenService;
+import com.bamdow.util.HttpUtil;
 
 
 @Controller
@@ -32,7 +37,7 @@ public class LoginController {
 	}
 	
 	@RequestMapping("/loginout.do")
-	public ModelAndView loginout(HttpServletRequest req){
+	public ModelAndView loginout(String originurl,HttpServletRequest req, HttpServletResponse resp){
 		Cookie[] cookies = req.getCookies();
 		String cookie_token = null;
 		if(cookies!=null){
@@ -42,14 +47,30 @@ public class LoginController {
 				}
 			}
 		}
-		
 		if(cookie_token != null){
-			String token = tokenService.get(cookie_token);
+			String token = (String)tokenService.get(cookie_token);
+			Map<String, String> tokenMap = (Map<String, String>) tokenService.get(token);
 			tokenService.remove(token);
 			tokenService.remove(cookie_token);
+			for(String key:tokenMap.keySet()){
+				if("username".equals(key)){
+					continue;
+				}
+				try{
+					HttpUtil.doGet(key+"&logout=-1&token="+token);
+				}catch(Exception e) {
+					e.printStackTrace();
+				}
+			}
 		}
-		ModelAndView mv = new ModelAndView("loginout");
-		return mv;
+		if( originurl!=null && !"".equals(originurl)){
+			try {
+				resp.sendRedirect(originurl);
+			} catch (IOException e){
+				e.printStackTrace();
+			}
+		}
+		return new ModelAndView("loginout");
 	}
 	
 	@RequestMapping("/dologin.do")
@@ -65,11 +86,13 @@ public class LoginController {
 		int maxage = 10*60;
 		Cookie cookie = new Cookie("lg-token",cookeid);
 		cookie.setHttpOnly(true);
-		cookie.setMaxAge(10*60);
+		cookie.setMaxAge(maxage);
 		resp.addCookie(cookie);
-		tokenService.put(cookeid, token);
-		String json="{\"username\"：\""+username+"\",\"timeout\"：\""+maxage+"\"}";
-		tokenService.put(token,json);
+		Map<String, String> tokenMap = new HashMap<String, String>();
+		tokenMap.put(origin, "1");
+		tokenMap.put("username", username);
+		tokenService.put(cookeid, token,maxage);
+		tokenService.put(token,tokenMap,maxage);
 		try {
 			resp.sendRedirect(origin+"&token="+token);
 		} catch (IOException e) {

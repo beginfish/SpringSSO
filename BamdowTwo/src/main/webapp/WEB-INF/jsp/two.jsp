@@ -9,5 +9,11 @@
 <body>
 	<p>first two</p>
 	<h>this show must be login</h>
+	<a href="#" onclick="logout()">登出</a>
+<script>
+function logout(){
+	location.href="http://localhost:8081/bamdowPassport/loginout.do?originurl="+encodeURI("http://localhost:8082/bamdowTwo");
+}
+</script>
 </body>
 </html>
